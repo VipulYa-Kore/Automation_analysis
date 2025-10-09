@@ -1,0 +1,719 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>BankAssist Utility</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    :root{
+      --bg:#0f172a;           /* slate-900 */
+      --panel:#111827;        /* gray-900 */
+      --panel-2:#0b1220;      /* deep panel */
+      --text:#e5e7eb;         /* gray-200 */
+      --muted:#9ca3af;        /* gray-400 */
+      --brand:#3b82f6;        /* blue-500 */
+      --brand-2:#2563eb;      /* blue-600 */
+      --accent:#22d3ee;       /* cyan-400 */
+      --ok:#10b981;           /* emerald-500 */
+      --warn:#f59e0b;         /* amber-500 */
+      --error:#ef4444;        /* red-500 */
+      --border:#1f2937;       /* gray-800 */
+      --code-bg:#0b1220;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      font-family: Inter, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+      background: radial-gradient(1200px 800px at 20% -10%, #0b2a37 0%, var(--bg) 45%) fixed,
+                  linear-gradient(180deg, var(--bg), #0b1220);
+      color: var(--text);
+      min-height:100vh;
+    }
+    header{
+      position:sticky; top:0; z-index:10;
+      backdrop-filter: saturate(120%) blur(8px);
+      background: rgba(8,11,21,.6);
+      border-bottom:1px solid var(--border);
+    }
+    .header-compact {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 16px;
+}
+.nav-inline {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.tab-btn {
+  padding: 6px 10px;
+  font-size: 13px;
+}
+.api-key-wrap {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.api-key-input {
+  width: 180px;
+  padding: 4px 6px;
+  font-size: 12px;
+}
+.api-status {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+    .container{max-width:1200px; margin:0 auto; padding:18px 20px;}
+    .header-top{
+      display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:16px;
+    }
+    .brand{
+      display:flex; align-items:center; gap:10px; font-weight:700; letter-spacing:.3px;
+    }
+    .dot{
+      width:12px; height:12px; border-radius:50%;
+      background: conic-gradient(from 180deg at 50% 50%, var(--accent), var(--brand), var(--accent));
+      box-shadow:0 0 18px var(--accent);
+    }
+    .api-key-section{
+      display:flex; align-items:center; gap:8px; flex-shrink:0;
+    }
+    .api-key-label{
+      font-size:12px; color:var(--muted); font-weight:600; white-space:nowrap;
+    }
+    .api-key-input{
+      width:300px; max-width:40vw; color:#eaf2ff;
+      background: #0a1020; border:1px solid #1a2744; border-radius:8px;
+      padding:8px 10px; outline:none; font-size:12px;
+      transition:border-color .15s ease, box-shadow .15s ease;
+      box-shadow: inset 0 0 0 1px rgba(59,130,246,.06);
+    }
+    .api-key-input:focus{
+      border-color:#2c5fb9; box-shadow: 0 0 0 3px rgba(59,130,246,.15);
+    }
+    .api-key-input::placeholder{color:#4b5563}
+    .api-status{
+      width:8px; height:8px; border-radius:50%; transition: background-color .2s ease;
+    }
+    .api-status.empty{background:#ef4444}
+    .api-status.filled{background:#10b981}
+    
+    nav{
+      margin-top:14px;
+      display:flex; gap:10px; flex-wrap:wrap; align-items:center;
+    }
+    .tab-btn{
+      appearance:none; border:1px solid var(--border);
+      background: linear-gradient(180deg, #0f1a2e, #0b1220);
+      color:var(--text); padding:10px 14px; border-radius:10px; cursor:pointer;
+      transition:.2s ease; font-weight:600;
+    }
+    .tab-btn:hover{border-color:#274472; transform: translateY(-1px)}
+    .tab-btn.active{
+      background: linear-gradient(180deg, #13315c, #102544);
+      border-color:#2a5fa6; box-shadow:0 0 0 3px rgba(59,130,246,.15) inset;
+    }
+    main{padding:20px}
+    .grid{display:grid; grid-template-columns: 1.05fr .95fr; gap:18px}
+    @media (max-width: 1024px){ 
+      .grid{grid-template-columns:1fr}
+      .header-top{flex-direction:column; align-items:flex-start}
+      .api-key-input{width:250px; max-width:80vw}
+    }
+
+    .panel{
+      background: linear-gradient(180deg, var(--panel), var(--panel-2));
+      border:1px solid var(--border);
+      border-radius:14px; overflow:hidden;
+      box-shadow: 0 10px 30px rgba(0,0,0,.35), inset 0 1px 0 rgba(255,255,255,.03);
+    }
+    .panel header{
+      position:relative;
+      background: linear-gradient(180deg, rgba(255,255,255,.03), rgba(255,255,255,0));
+      padding:14px 16px; border-bottom:1px solid var(--border);
+    }
+    .panel header h2{
+      margin:0; font-size:16px; font-weight:800; letter-spacing:.4px; color:#e9edf8;
+      text-transform:uppercase;
+    }
+    .panel .body{padding:16px}
+    label{display:block; font-size:12px; color:var(--muted); margin:12px 0 6px 2px; font-weight:700; letter-spacing:.2px}
+    textarea, input{
+      width:100%; color:#eaf2ff;
+      background: #0a1020; border:1px solid #1a2744; border-radius:10px;
+      padding:10px 12px; outline:none; resize:vertical; min-height:44px;
+      transition:border-color .15s ease, box-shadow .15s ease;
+      box-shadow: inset 0 0 0 1px rgba(59,130,246,.06), 0 8px 20px rgba(0,0,0,.25);
+    }
+    textarea:focus, input:focus{
+      border-color:#2c5fb9; box-shadow: 0 0 0 4px rgba(59,130,246,.15);
+    }
+    .row{display:flex; gap:12px; align-items:center; flex-wrap:wrap}
+    .run{
+      appearance:none; cursor:pointer;
+      background: linear-gradient(180deg, var(--brand), var(--brand-2));
+      border:0; color:white; padding:11px 18px; border-radius:12px; font-weight:800; letter-spacing:.3px;
+      box-shadow:0 10px 20px rgba(37,99,235,.35), inset 0 -2px 0 rgba(0,0,0,.25);
+      transition: transform .08s ease, filter .2s ease;
+    }
+    .run:hover{filter:brightness(1.05)}
+    .run:active{transform: translateY(1px)}
+    .run:disabled{
+      opacity:0.5; cursor:not-allowed; filter:grayscale(1);
+    }
+
+    .hint{color:var(--muted); font-size:12px}
+    .kbd{
+      display:inline-block; border:1px solid #213257; background:#0b1731; color:#cdd8ff;
+      padding:1px 6px; border-radius:6px; font-weight:700
+    }
+
+    /* Loader */
+    .loader-wrap{display:none; align-items:center; gap:10px; margin-left:auto}
+    .loader{
+      width:18px; height:18px; border-radius:50%;
+      border:3px solid rgba(255,255,255,.15); border-top-color: var(--accent);
+      animation: spin .7s linear infinite;
+    }
+    .pulse{width:8px; height:8px; border-radius:50%;
+      background: var(--ok); box-shadow: 0 0 0 rgba(16,185,129,.7); animation:pulse 1.5s infinite}
+    @keyframes spin{to{transform:rotate(360deg)}}
+    @keyframes pulse{
+      0%{box-shadow:0 0 0 0 rgba(16,185,129,.7)}
+      70%{box-shadow:0 0 0 8px rgba(16,185,129,0)}
+      100%{box-shadow:0 0 0 0 rgba(16,185,129,0)}
+    }
+
+    /* Result JSON */
+    .result{
+      background: var(--code-bg);
+      border:1px solid #152544; border-radius:12px;
+      padding:14px; min-height:140px; white-space: pre-wrap;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      line-height:1.45; color:#e2ecff;
+      box-shadow: inset 0 0 0 1px rgba(59,130,246,.06);
+    }
+
+    .tagbar{
+      display:flex; align-items:center; gap:10px; flex-wrap:wrap; color:var(--muted); font-size:12px
+    }
+    .tag{padding:4px 8px; border:1px solid #213257; border-radius:999px; background:#0b1731; color:#cfe1ff; font-weight:700}
+    footer{opacity:.8; color:var(--muted); font-size:12px; text-align:center; padding:28px 0}
+
+    .error{color:var(--error); background:rgba(239,68,68,.1); padding:12px; border-radius:8px; border:1px solid rgba(239,68,68,.2)}
+  </style>
+</head>
+<body>
+  <header>
+  <div class="container header-compact">
+    <div class="brand"><span class="dot"></span>BankAssist Utility</div>
+    <nav class="nav-inline">
+      <button class="tab-btn" id="btnEntity">Entity Extractor</button>
+      <button class="tab-btn active" id="btnFlow">Flow Validator</button>
+      <div class="api-key-wrap">
+        <input type="text" id="apiKey" class="api-key-input" placeholder="OpenAI API Key" />
+        <div class="api-status empty" id="apiStatus"></div>
+      </div>
+    </nav>
+  </div>
+</header>
+
+  <main class="container">
+    <div class="grid">
+      <!-- Left: Inputs -->
+      <section class="panel" id="entityExtractor" style="display:none">
+        <header><h2>Entity Extractor</h2></header>
+        <div class="body">
+          <label>Flow Description</label>
+          <textarea id="flowDesc" rows="3" placeholder="Paste conversation or flow notes"></textarea>
+
+          <label>DPD Data (JSON)</label>
+          <textarea id="dpdData" rows="4" placeholder='{"GetCustomerInfo": {...}, "GetAccountInfo": {...}}'></textarea>
+
+          <label>Entity Description (JSON)</label>
+          <textarea id="entityDesc" rows="4" placeholder='[{"name":"email","description":"from DPD_data.GetCustomerInfo.email"}, ...]'></textarea>
+
+          <div class="row" style="margin-top:10px">
+            <button class="run" id="runEntity">RUN ▷</button>
+            <div class="hint">Tip: Press <span class="kbd">Ctrl</span> + <span class="kbd">Enter</span> to run</div>
+            <div class="loader-wrap" id="loaderEntity">
+              <div class="loader"></div><span class="hint">Extracting…</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel" id="flowValidator" style="display:block">
+        <header>
+          <h2>Flow Validator</h2>
+        </header>
+        <div class="body">
+          <label>Actual Conversation</label>
+          <textarea id="actualConv" rows="3" placeholder="User: ...&#10;Bot: ..."></textarea>
+
+          <label>User Data (DPD Data, JSON)</label>
+          <textarea id="userData" rows="4" placeholder='{"GetCustomerInfo": {...}, "GetAccountInfo": {...}}'></textarea>
+
+          <label>Flow Description</label>
+          <textarea id="flowDescription" rows="3" placeholder="Describe expected interaction logic"></textarea>
+
+          <label>Entities (JSON)</label>
+          <textarea id="entities" rows="3" placeholder='[{"name":"...","value":"..."}] or {}'></textarea>
+
+          <div class="row" style="margin-top:10px">
+            <button class="run" id="runFlow">RUN ▷</button>
+            <div class="hint">Tip: Press <span class="kbd">Ctrl</span> + <span class="kbd">Enter</span> to run</div>
+            <div class="loader-wrap" id="loaderFlow">
+              <div class="loader"></div><span class="hint">Validating…</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Right: Output -->
+      <section class="panel">
+        <header>
+          <h2>Output</h2>
+          <div class="tagbar">
+            <span class="tag">JSON</span>
+            <span class="tag">Pretty</span>
+            <span class="tag">Copy Safe</span>
+            <span class="pulse" title="Ready"></span>
+          </div>
+        </header>
+        <div class="body">
+          <pre id="result" class="result">{}</pre>
+        </div>
+      </section>
+    </div>
+
+    <footer>Press Ctrl+Enter to run the active tool · Enter your OpenAI API key above to get started</footer>
+  </main>
+
+  <script>
+    // Default tab: Flow Validator
+    const btnEntity = document.getElementById('btnEntity');
+    const btnFlow   = document.getElementById('btnFlow');
+    const entityPanel = document.getElementById('entityExtractor');
+    const flowPanel   = document.getElementById('flowValidator');
+    const resultBox = document.getElementById('result');
+    const loaderEntity = document.getElementById('loaderEntity');
+    const loaderFlow   = document.getElementById('loaderFlow');
+    const apiKeyInput = document.getElementById('apiKey');
+    const apiStatus = document.getElementById('apiStatus');
+    const runEntityBtn = document.getElementById('runEntity');
+    const runFlowBtn = document.getElementById('runFlow');
+
+    // API Key management
+    apiKeyInput.addEventListener('input', updateApiKeyStatus);
+    function updateApiKeyStatus() {
+      const hasKey = apiKeyInput.value.trim().length > 0;
+      apiStatus.className = hasKey ? 'api-status filled' : 'api-status empty';
+      runEntityBtn.disabled = !hasKey;
+      runFlowBtn.disabled = !hasKey;
+    }
+    updateApiKeyStatus(); // Initial check
+
+    function getApiKey() {
+      const key = apiKeyInput.value.trim();
+      if (!key) {
+        throw new Error('Please enter your OpenAI API key in the navigation bar');
+      }
+      return key;
+    }
+
+    function setActive(tab){
+      const isFlow = tab === 'flow';
+      btnFlow.classList.toggle('active', isFlow);
+      btnEntity.classList.toggle('active', !isFlow);
+      flowPanel.style.display = isFlow ? 'block' : 'none';
+      entityPanel.style.display = isFlow ? 'none' : 'block';
+    }
+    btnEntity.addEventListener('click', ()=>setActive('entity'));
+    btnFlow.addEventListener('click', ()=>setActive('flow'));
+    setActive('flow'); // ensure default
+
+    // Keyboard: Ctrl+Enter triggers RUN of visible panel
+    document.addEventListener('keydown', (e)=>{
+      if ((e.ctrlKey || e.metaKey) && e.key === 'Enter'){
+        if (flowPanel.style.display !== 'none'){ runFlowValidator(); }
+        else { runEntityExtractor(); }
+      }
+    });
+
+    function showLoader(which, show){
+      const el = which === 'flow' ? loaderFlow : loaderEntity;
+      el.style.display = show ? 'flex' : 'none';
+    }
+
+    // JSON helpers
+    function extractJsonString(text) {
+      if (!text) return "";
+      const fenceMatch = text.match(/``````/i);
+      if (fenceMatch) return fenceMatch[1].trim();
+      const first = text.indexOf("{");
+      const last = text.lastIndexOf("}");
+      if (first !== -1 && last !== -1 && last > first) {
+        return text.slice(first, last + 1).trim();
+      }
+      return text.trim();
+    }
+    function formatJsonOutput(rawJson) {
+      const cleaned = extractJsonString(rawJson).replace(/^\s*json\s*(?=\{)/i, "");
+      try {
+        const obj = JSON.parse(cleaned);
+        return JSON.stringify(obj, null, 2);
+      } catch (e) {
+        return cleaned || rawJson;
+      }
+    }
+    function setResult(text){ resultBox.textContent = text; }
+
+    // ENTITY EXTRACTOR
+    runEntityBtn.addEventListener('click', runEntityExtractor);
+    async function runEntityExtractor() {
+      try {
+        const apiKey = getApiKey();
+        const flowDesc = document.getElementById('flowDesc').value;
+        const dpdData = document.getElementById('dpdData').value;
+        const entityDesc = document.getElementById('entityDesc').value;
+
+        const payload = JSON.stringify({
+          "messages": [
+            {
+              "role": "system",
+              "content": "You are an intelligent data extractor.\n//API DAta is DPD_data\nYou will be given:\n1. A list of entities, each with a name and a description.\n2. A user-agent conversation.\n3. DPD_data (structured tabular data in JSON format).\n\nYour task is to extract the values for each entity strictly based on its description. The entity description will specify whether the value should be extracted from the conversation or from the DPD_data.\n\nConstraints:\n- Do NOT infer or guess values. Only extract if the data is explicitly available in either the conversation or DPD_data as per the description.\n- If the required data is not found in the specified source, mark the value as \"NOT_FOUND\".\n- If the entity description allows selecting from multiple matching records in DPD_data, you must randomly select one matching value instead of always picking the first.\n- Return the result as a JSON object with keys as entity names and values as the extracted data."
+            },
+            {
+              "role": "user",
+              "content": "Entities list:-"+entityDesc+"\nConversation:-"+flowDesc+"\nDPD data:-"+dpdData
+            }
+          ],
+          "temperature": 0.1,
+          "max_tokens": 4096,
+          "top_p":0.95,
+          "frequency_penalty":0,
+          "presence_penalty":0,
+          "stop":null
+        });
+
+        showLoader('entity', true);
+        setResult('Running Entity Extractor…');
+        
+        const response = await fetch(
+          "https://bankassisteastus2.openai.azure.com/openai/deployments/bankassist-test-gpt-4.1-2025-04-14/chat/completions?api-version=2024-02-15-preview",
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "api-key": apiKey
+            },
+            body: payload
+          }
+        );
+        const data = await response.json();
+        
+        if (!response.ok) {
+          throw new Error(data.error?.message || `API Error: ${response.status}`);
+        }
+        
+        const raw = data?.choices?.[0]?.message?.content || "No Result";
+        setResult(formatJsonOutput(raw));
+      } catch(err) {
+        setResult(`Error: ${err.message}`);
+        resultBox.className = 'result error';
+        setTimeout(() => resultBox.className = 'result', 3000);
+      } finally {
+        showLoader('entity', false);
+      }
+    }
+
+    // FLOW VALIDATOR
+    runFlowBtn.addEventListener('click', runFlowValidator);
+    async function runFlowValidator() {
+      try {
+        const apiKey = getApiKey();
+        const actualConv = document.getElementById('actualConv').value;
+        const userData = document.getElementById('userData').value;
+        const flowDescription = document.getElementById('flowDescription').value;
+        const entities = document.getElementById('entities').value;
+
+        const payload = JSON.stringify({
+          "messages": [
+            {
+              "role": "system",
+              "content": `
+You are an AI assistant for validating banking chatbot conversations.
+Your task is to evaluate the conversation against the provided **flow description**, **expected entities** and **DB data**.
+
+### Input Data:
+1. A user-bot **conversation**.
+2. A **flow description** describing the expected interaction.
+3. A list of **extracted entities** from the conversation.
+4. A **DB dataset** representing real customer account data.
+
+### Note:
+1. In DB data, data present under **GetCustomerInfo** is considered as users profile information/data and similarly data present under **GetAccountInfo** is considered as users account information/data.
+
+### FLOW TYPE CLASSIFICATION:
+
+Before validation, classify the conversation into one of these flow types:
+
+1. **Informational/Retrieval Flow**: 
+   - User requests to VIEW/GET/CHECK information (e.g., "What is my email?", "Show my balance", "Get my account number")
+   - Bot only retrieves and displays data
+   - **NO confirmation or explicit acknowledgment required** - providing the information IS the completion
+   - Entity extraction may be implicit from context
+
+2. **Transactional Flow**:
+   - User wants to UPDATE/CHANGE/MODIFY data (e.g., "Update my email", "Change my phone number")
+   - User wants to TRANSFER money or perform financial actions
+   - **Confirmation REQUIRED** before action
+   - **Acknowledgment REQUIRED** after completion
+
+3. **Ambiguous Flow**:
+   - Intent unclear or could be either type
+   - Requires clarification from user
+
+### Validation & Scoring Rules:
+
+1. **Intent Identification Score (0–10):**
+   * Give full score if the bot correctly identifies and responds to the user's intent.
+   * Deduct points if intent is misunderstood or partially recognized.
+
+2. **Entity Extraction Score** (0-10)
+   - **For Informational Flows**: If the bot correctly identifies what information to retrieve (even without explicit entity extraction), consider this successful entity handling
+   - **For Transactional Flows**: Explicit entity extraction required
+   - **10/10**: All required entities correctly extracted/identified and match user inputs
+   - **7-9/10**: Most entities extracted correctly, minor misses on optional fields
+   - **4-6/10**: Key entities missing or partially extracted
+   - **0-3/10**: Critical entities missing or incorrectly extracted
+
+3. **DB Data Accuracy Score** (0-10) **[CRITICAL]**
+   - **10/10**: All bot-stated values (email, nickname, phone, account numbers) perfectly match DB data
+   - **7-9/10**: Minor formatting differences but values are essentially correct
+   - **4/10**: ANY factual mismatch between bot-stated values and DB data (HARD LIMIT)
+   - **0-3/10**: Multiple or critical DB data mismatches
+   - **Special Case**: If DB has "N.A" and bot responds with "I could not find an <entity> associated with..." → Full marks for this aspect
+
+4. **Flow Completion Score** (0-10) **[CRITICAL - FLOW TYPE DEPENDENT]**
+
+   **For INFORMATIONAL/RETRIEVAL Flows:**
+   - **10/10**: Bot successfully retrieves and provides the requested information
+   - **7-9/10**: Information provided but with minor formatting issues or unnecessary extra steps
+   - **4-6/10**: Information provided but with significant delays or confusion
+   - **0-3/10**: Failed to provide requested information or provided wrong information
+   
+   **For TRANSACTIONAL Flows:**
+   - **10/10**: Complete flow execution with all expected steps
+     - Scope identification (where applicable)
+     - Account identification (where applicable)
+     - New data input (where applicable)
+     - Confirmation request (REQUIRED)
+     - Final acknowledgment/completion message (REQUIRED)
+   - **7-9/10**: Flow mostly complete, minor optional steps missing
+   - **5/10**: Flow incomplete, missing critical steps like confirmation or acknowledgment (HARD LIMIT)
+   - **0-4/10**: Flow severely broken or wrong sequence
+
+5. **Confirmation & Acknowledgment Score** (0-10) **[FLOW TYPE DEPENDENT]**
+   
+   **For INFORMATIONAL/RETRIEVAL Flows:**
+   - **10/10**: Bot provides the requested information clearly (no confirmation needed)
+   - **7-9/10**: Information provided with minor clarity issues
+   - **0-3/10**: Bot unnecessarily asks for confirmation for a simple retrieval (over-engineering)
+   
+   **For TRANSACTIONAL Flows:**
+   - **10/10**: Bot requests confirmation before action AND provides final acknowledgment
+   - **7-9/10**: Either confirmation or acknowledgment present but not both
+   - **4-6/10**: Generic confirmation without specifics
+   - **0-3/10**: No confirmation or acknowledgment
+
+6. **Data Masking & Security Score** (0-10)
+   - **10/10**: Account/card numbers properly masked (e.g., "xxxx1234")
+   - **7-9/10**: Mostly masked with minor exposure
+   - **0-3/10**: Sensitive data exposed in full
+
+---
+### OVERALL SCORE CALCULATION:
+
+**Formula**: Weighted average with critical rules applied
+
+Overall Score = (
+    Intent × 0.15 +
+    Entity × 0.15 +
+    DB_Accuracy × 0.30 +
+    Flow_Completion × 0.25 +
+    Confirmation × 0.10 +
+    Security × 0.05
+)
+
+**CRITICAL OVERRIDES**:
+- If **DB Data Accuracy ≤ 4/10** → Overall Score capped at **4/10**
+- If **Flow Completion ≤ 5/10** AND flow type is **TRANSACTIONAL** → Overall Score capped at **5/10**
+- For **INFORMATIONAL flows**, low confirmation scores do NOT trigger caps
+---
+
+## 🔍 ISSUE TYPE CLASSIFICATION:
+
+Identify the **primary issue type** from the following categories:
+
+1. **Config Issue**: 
+   - Bot configuration errors (wrong templates, incorrect branching logic)
+   - Missing response templates
+   - Incorrect system prompts or constraints
+
+2. **NLP Issue**:
+   - Intent misclassification
+   - Entity extraction failures
+   - Incorrect entity mapping
+   - Language understanding problems
+
+3. **DB Data Mismatch**:
+   - Bot states values not present in DB data
+   - Incorrect data retrieval from DB
+   - Data synchronization issues
+
+4. **Flow Description Needs Update**:
+   - flow description itself is inconsistent.
+   - Illogical flow sequence
+   - Unclear flow instructions
+
+5. **Integration Issue**:
+   - Failed API calls
+
+6. **No Issue / Pass**:
+   - Conversation meets all criteria successfully
+
+7. **Multiple Issues**:
+   - When more than one issue type is present (list all)
+
+---
+## CRITICAL VALIDATION RULES:
+
+1. **DB Data Match** (Critical):
+   - If **any value stated in the conversation (e.g., current email, account nickname, phone number) does not match** the DB data, the DB Accuracy score = **4/10** and Overall Score capped at **4/10**.
+
+2. **Flow Completion Rule** (Critical - Transactional Flows Only):
+   - **For TRANSACTIONAL flows**: If the conversation **does not fully follow through the expected steps** (e.g., missing user confirmation or bot acknowledgment), the Flow Completion score = **5/10** and Overall Score capped at **5/10**.
+   - **For INFORMATIONAL flows**: Successfully providing the requested information = complete flow. No confirmation/acknowledgment required.
+
+3. **N.A Handling**:
+   - If DB data has value as "N.A" or the value is empty or the value is Null or anything similar, bot must respond with "I could not find an <entity value> associated with..." or similar.
+
+4. **Data Masking**:
+   - Bot may display account/card numbers as "xxxx1234" or similar formats. This is correct behavior - do NOT decrease score for proper masking.
+
+5. **Entity Extraction in Informational Flows**:
+   - If the bot successfully retrieves the correct information, this demonstrates successful entity identification even if no explicit entities are extracted in the entity list.
+   - Do NOT penalize informational flows for empty entity lists if the bot provides correct information.
+
+---
+
+## OUTPUT FORMAT:
+Return your evaluation in the following **stringified JSON format**:
+
+{
+  "flow_type": "<INFORMATIONAL/TRANSACTIONAL/AMBIGUOUS>",
+  "overall_validation": {
+    "score": <0-10>,
+    "reason": "<Clear explanation of overall assessment and any critical issues>"
+  },
+  "issue_type": "<Primary issue category from classification above>",
+  "multi_dimensional_scoring": {
+    "intent_identification": {
+      "score": <0-10>,
+      "reason": "<Specific reason>"
+    },
+    "entity_extraction": {
+      "score": <0-10>,
+      "reason": "<Specific reason>"
+    },
+    "DB_data_accuracy": {
+      "score": <0-10>,
+      "reason": "<Specific reason>"
+    },
+    "flow_completion": {
+      "score": <0-10>,
+      "reason": "<Specific reason>"
+    },
+    "confirmation_acknowledgment": {
+      "score": <0-10>,
+      "reason": "<Specific reason>"
+    },
+    "data_masking_security": {
+      "score": <0-10>,
+      "reason": "<Specific reason>"
+    }
+  },
+  "critical_violations": [
+    "<List any critical rule violations that triggered score caps>"
+  ],
+  "recommendations": [
+    "<Actionable suggestions to fix identified issues>"
+  ]
+}
+
+---
+## EVALUATION APPROACH:
+
+1. **First Pass**: Classify flow type (INFORMATIONAL vs TRANSACTIONAL)
+2. **Second Pass**: Evaluate each dimension independently based on flow type
+3. **Third Pass**: Check for critical violations (DB mismatch, flow incompleteness for transactional flows)
+4. **Fourth Pass**: Apply critical override rules if needed (only for transactional flows)
+5. **Fifth Pass**: Classify primary issue type
+6. **Final Pass**: Calculate overall score and provide comprehensive reasoning
+
+Be **extremely strict** about factual correctness and data accuracy. Apply flow-appropriate standards for completion and confirmation. Provide specific, actionable feedback in all reasoning fields.
+
+**Key Principle**: Informational flows that successfully provide accurate data from DB should receive high scores even without confirmations or explicit entity extraction.
+`
+            },
+            {
+              "role": "user",
+              "content": "Now, validate the following inputs:\n\n"+"Conversation:-\n"+actualConv+"\n\nFlow Description:-\n"+flowDescription+"\n\nEntities:-\n"+entities+"\n\nDPD Data:-\n"+userData
+            }
+          ],
+          "temperature": 0.1,
+          "max_tokens": 4096,
+          "top_p":0.95,
+          "frequency_penalty":0,
+          "presence_penalty":0,
+          "stop":null
+        });
+
+        showLoader('flow', true);
+        setResult('Running Flow Validator…');
+        
+        const response = await fetch(
+          "https://bankassisteastus2.openai.azure.com/openai/deployments/bankassist-test-gpt-4.1-2025-04-14/chat/completions?api-version=2024-02-15-preview",
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "api-key": apiKey
+            },
+            body: payload
+          }
+        );
+        const data = await response.json();
+        
+        if (!response.ok) {
+          throw new Error(data.error?.message || `API Error: ${response.status}`);
+        }
+        
+        const raw = data?.choices?.[0]?.message?.content || "No Result";
+        setResult(formatJsonOutput(raw));
+      } catch(err) {
+        setResult(`Error: ${err.message}`);
+        resultBox.className = 'result error';
+        setTimeout(() => resultBox.className = 'result', 3000);
+      } finally {
+        showLoader('flow', false);
+      }
+    }
+  </script>
+</body>
+</html>
