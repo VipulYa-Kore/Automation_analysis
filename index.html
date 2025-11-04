@@ -457,6 +457,8 @@ Your task is to evaluate the conversation against the provided **flow descriptio
 
 ### Note:
 1. In DB data, data present under **GetCustomerInfo** is considered as users profile information/data and similarly data present under **GetAccountInfo** is considered as users account information/data.
+2. Both Mailing address and Delivery address are considered as same. Delivery address from the DB data is considered as Mailing address by the bot.
+3.Accounts opening data is strictly mapped to "openingDate" field from "GetAccountInfo" in the DB data.
 
 ### FLOW TYPE CLASSIFICATION:
 
@@ -532,7 +534,7 @@ Before validation, classify the conversation into one of these flow types:
    - **0-3/10**: No confirmation or acknowledgment
 
 6. **Data Masking & Security Score** (0-10)
-   - **10/10**: Account/card numbers properly masked (e.g., "xxxx1234")
+   - **10/10**: Account/card numbers properly masked (e.g., "xxxx1234" or "xxx1234")
    - **7-9/10**: Mostly masked with minor exposure
    - **0-3/10**: Sensitive data exposed in full
 
@@ -540,7 +542,7 @@ Before validation, classify the conversation into one of these flow types:
 ### OVERALL SCORE CALCULATION:
 
 **Formula**: Weighted average with critical rules applied
-
+```
 Overall Score = (
     Intent × 0.15 +
     Entity × 0.15 +
@@ -549,6 +551,7 @@ Overall Score = (
     Confirmation × 0.10 +
     Security × 0.05
 )
+```
 
 **CRITICAL OVERRIDES**:
 - If **DB Data Accuracy ≤ 4/10** → Overall Score capped at **4/10**
@@ -615,6 +618,7 @@ Identify the **primary issue type** from the following categories:
 ## OUTPUT FORMAT:
 Return your evaluation in the following **stringified JSON format**:
 
+```json
 {
   "flow_type": "<INFORMATIONAL/TRANSACTIONAL/AMBIGUOUS>",
   "overall_validation": {
@@ -655,7 +659,7 @@ Return your evaluation in the following **stringified JSON format**:
     "<Actionable suggestions to fix identified issues>"
   ]
 }
-
+```
 ---
 ## EVALUATION APPROACH:
 
@@ -717,3 +721,4 @@ Be **extremely strict** about factual correctness and data accuracy. Apply flow-
   </script>
 </body>
 </html>
+
