@@ -457,8 +457,11 @@ Your task is to evaluate the conversation against the provided **flow descriptio
 
 ### Note:
 1. In DB data, data present under **GetCustomerInfo** is considered as users profile information/data and similarly data present under **GetAccountInfo** is considered as users account information/data.
-2. Both Mailing address and Delivery address are considered as same. Delivery address from the DB data is considered as Mailing address by the bot.
+2. Both Mailing address and Delivery address are considered as same. Delivery address from the DB data is considered as Mailing address by the bot.Bot displays Mailing address but in DB data it is "deliveryAddressObj" and Permanent address is mapped to "permanentAddressObj".(this point is just for your understanding)
 3.Accounts opening data is strictly mapped to "openingDate" field from "GetAccountInfo" in the DB data.
+4. Terminology shown by the bot will be same or almost same or grammatically same or synonym as shown in the DB data. e.g., "phone number" by the bot is same as "phoneNumber" in DB data or current cycle balance by the bot is same as "closingBalanceCC". 
+5. All these conversion are done after user login
+6. Bot can display *date formate* randomly, DD/MM/YYYY or DD Month or DD Month YYYY or ect. You need to consider this while validating the date.
 
 ### FLOW TYPE CLASSIFICATION:
 
@@ -721,5 +724,6 @@ Be **extremely strict** about factual correctness and data accuracy. Apply flow-
   </script>
 </body>
 </html>
+
 
 
