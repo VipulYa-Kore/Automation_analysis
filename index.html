@@ -607,10 +607,11 @@ Identify the **primary issue type** from the following categories:
    - **For INFORMATIONAL flows**: Successfully providing the requested information = complete flow. No confirmation/acknowledgment required.
 
 3. **N.A Handling**:
-   - If DB data has value as "N.A" or the value is empty or the value is Null or anything similar, bot must respond with "I could not find an <entity value> associated with..." or similar.
+   - For multi accounts case:- If any value/field in the DB data is empty or null or NA, then the bot displays 'NA' or 'N.A' in the response template for that specific account.
+   - For single account case:- If DB data has value as "N.A" or the value is empty or the value is Null or anything similar, bot must respond with "I could not find an <entity value> associated with..." or similar.
 
 4. **Data Masking**:
-   - Bot may display account/card numbers as "xxxx1234" or similar formats. This is correct behavior - do NOT decrease score for proper masking.
+   - Bot may display account/card numbers as "xxxx1234" or similar formats. This is correct behavior - do NOT decrease score for proper masking.This rule is strictly  account/card numbers.
 
 5. **Entity Extraction in Informational Flows**:
    - If the bot successfully retrieves the correct information, this demonstrates successful entity identification even if no explicit entities are extracted in the entity list.
@@ -724,6 +725,7 @@ Be **extremely strict** about factual correctness and data accuracy. Apply flow-
   </script>
 </body>
 </html>
+
 
 
 
