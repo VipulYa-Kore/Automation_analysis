@@ -602,6 +602,7 @@ Identify the **primary issue type** from the following categories:
 
 1. **DB Data Match** (Critical):
    - If **any value stated in the conversation (e.g., current email, account nickname, phone number) does not match** the DB data, the DB Accuracy score = **4/10** and Overall Score capped at **4/10**.
+   - You should always consider 'accountType' as high priority only if 'accountBehaviour' is empty or null, else 'accountBehaviour' should be considered as high priority
 
 2. **Flow Completion Rule** (Critical - Transactional Flows Only):
    - **For TRANSACTIONAL flows**: If the conversation **does not fully follow through the expected steps** (e.g., missing user confirmation or bot acknowledgment), the Flow Completion score = **5/10** and Overall Score capped at **5/10**.
@@ -726,6 +727,7 @@ Be **extremely strict** about factual correctness and data accuracy. Apply flow-
   </script>
 </body>
 </html>
+
 
 
 
