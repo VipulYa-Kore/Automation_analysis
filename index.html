@@ -455,14 +455,15 @@ Your task is to evaluate the conversation against the provided **flow descriptio
 3. A list of **extracted entities** from the conversation.
 4. A **DB dataset** representing real customer account data.
 
-### Note:
+### Note(can over ride "CRITICAL OVERRIDES"):
 1. In DB data, data present under **GetCustomerInfo** is considered as users profile information/data and similarly data present under **GetAccountInfo** is considered as users account information/data.
 2. Both Mailing address and Delivery address are considered as same. Delivery address from the DB data is considered as Mailing address by the bot.Bot displays Mailing address but in DB data it is "deliveryAddressObj" and Permanent address is mapped to "permanentAddressObj".(this point is just for your understanding)
-3.Accounts opening data is strictly mapped to "openingDate" field from "GetAccountInfo" in the DB data.
+3.Accounts opening date is strictly mapped to "openingDate" field from "GetAccountInfo" in the DB data.
 4. Terminology shown by the bot will be same or almost same or grammatically same or synonym as shown in the DB data. e.g., "phone number" by the bot is same as "phoneNumber" in DB data or current cycle balance by the bot is same as "closingBalanceCC". 
 5. All these conversion are done after user login
-6. Bot can display *date formate* randomly, DD/MM/YYYY or DD Month or DD Month YYYY or ect. You need to consider this while validating the date.
+6. Bot can display *date formate* randomly, DD/MM/YYYY or DD Month or DD Month YYYY or Month DD YYYY or ect. You need to consider this while validating the date.This is a critical rule.
 7. You should always consider 'accountType' as high priority only if 'accountBehaviour' is empty or null, else 'accountBehaviour' should be considered as high priority
+8. Bot will always display last 4 digits of the account number or card number in the response template.But some time is "get account number or get card number" useCase, then bot will display the full account number or card number in the response template.This is a critical rule.
 
 ### FLOW TYPE CLASSIFICATION:
 
@@ -542,6 +543,11 @@ Before validation, classify the conversation into one of these flow types:
    - **7-9/10**: Mostly masked with minor exposure
    - **0-3/10**: Sensitive data exposed in full
 
+7. **Conversation Quality Score** (0-10)
+   - **10/10**: Conversation is natural, fluent, and engaging
+   - **7-9/10**: Conversation is mostly natural, with minor issues
+   - **0-3/10**: Conversation is unnatural, stilted, or confusing
+
 ---
 ### OVERALL SCORE CALCULATION:
 
@@ -567,10 +573,11 @@ Overall Score = (
 
 Identify the **primary issue type** from the following categories:
 
-1. **Config Issue**: 
+1. **Bot Issue**: 
    - Bot configuration errors (wrong templates, incorrect branching logic)
    - Missing response templates
    - Incorrect system prompts or constraints
+   - If any template data is present in the Actual conversation, then it is a bot issue.Like the raw json data without parsing into the text.
 
 2. **NLP Issue**:
    - Intent misclassification
@@ -602,7 +609,6 @@ Identify the **primary issue type** from the following categories:
 
 1. **DB Data Match** (Critical):
    - If **any value stated in the conversation (e.g., current email, account nickname, phone number) does not match** the DB data, the DB Accuracy score = **4/10** and Overall Score capped at **4/10**.
-   - You should always consider 'accountType' as high priority only if 'accountBehaviour' is empty or null, else 'accountBehaviour' should be considered as high priority
 
 2. **Flow Completion Rule** (Critical - Transactional Flows Only):
    - **For TRANSACTIONAL flows**: If the conversation **does not fully follow through the expected steps** (e.g., missing user confirmation or bot acknowledgment), the Flow Completion score = **5/10** and Overall Score capped at **5/10**.
@@ -654,6 +660,10 @@ json
       "reason": "<Specific reason>"
     },
     "data_masking_security": {
+      "score": <0-10>,
+      "reason": "<Specific reason>"
+    },
+    "Conversation Quality": {
       "score": <0-10>,
       "reason": "<Specific reason>"
     }
@@ -727,6 +737,7 @@ Be **extremely strict** about factual correctness and data accuracy. Apply flow-
   </script>
 </body>
 </html>
+
 
 
 
