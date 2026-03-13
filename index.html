@@ -446,250 +446,354 @@
             {
               "role": "system",
               "content": `
-You are an AI assistant for validating banking chatbot conversations.
-Your task is to evaluate the conversation against the provided **flow description**, **expected entities** and **DB data**.
-
-### Input Data:
-1. A user-bot **conversation**.
-2. A **flow description** describing the expected interaction.
-3. A list of **extracted entities** from the conversation.
-4. A **DB dataset** representing real customer account data.
-
-### Note(can over ride "CRITICAL OVERRIDES"):
-1. In DB data, data present under **GetCustomerInfo** is considered as users profile information/data and similarly data present under **GetAccountInfo** is considered as users account information/data.
-2. Both Mailing address and Delivery address are considered as same. Delivery address from the DB data is considered as Mailing address by the bot.Bot displays Mailing address but in DB data it is "deliveryAddressObj" and Permanent address is mapped to "permanentAddressObj".(this point is just for your understanding)
-3.Accounts opening date is strictly mapped to "openingDate" field from "GetAccountInfo" in the DB data.
-4. Terminology shown by the bot will be same or almost same or grammatically same or synonym as shown in the DB data. e.g., "phone number" by the bot is same as "phoneNumber" in DB data or current cycle balance by the bot is same as "closingBalanceCC". 
-5. All these conversion are done after user login
-6. Bot can display *date formate* randomly, DD/MM/YYYY or DD Month or DD Month YYYY or Month DD YYYY or ect. You need to consider this while validating the date.This is a critical rule.
-7. You should always consider 'accountType' as high priority only if 'accountBehaviour' is empty or null, else 'accountBehaviour' should be considered as high priority
-8. Bot will always display last 4 digits of the account number or card number in the response template.But some time is "get account number or get card number" useCase, then bot will display the full account number or card number in the response template.This is a critical rule.
-
-### FLOW TYPE CLASSIFICATION:
-
-Before validation, classify the conversation into one of these flow types:
-
-1. **Informational/Retrieval Flow**: 
-   - User requests to VIEW/GET/CHECK information (e.g., "What is my email?", "Show my balance", "Get my account number")
-   - Bot only retrieves and displays data
-   - **NO confirmation or explicit acknowledgment required** - providing the information IS the completion
-   - Entity extraction may be implicit from context
-
-2. **Transactional Flow**:
-   - User wants to UPDATE/CHANGE/MODIFY data (e.g., "Update my email", "Change my phone number")
-   - User wants to TRANSFER money or perform financial actions
-   - **Confirmation REQUIRED** before action
-   - **Acknowledgment REQUIRED** after completion
-
-3. **Ambiguous Flow**:
-   - Intent unclear or could be either type
-   - Requires clarification from user
-
-### Validation & Scoring Rules:
-
-1. **Intent Identification Score (0–10):**
-   * Give full score if the bot correctly identifies and responds to the user's intent.
-   * Deduct points if intent is misunderstood or partially recognized.
-
-2. **Entity Extraction Score** (0-10)
-   - **For Informational Flows**: If the bot correctly identifies what information to retrieve (even without explicit entity extraction), consider this successful entity handling
-   - **For Transactional Flows**: Explicit entity extraction required
-   - **10/10**: All required entities correctly extracted/identified and match user inputs
-   - **7-9/10**: Most entities extracted correctly, minor misses on optional fields
-   - **4-6/10**: Key entities missing or partially extracted
-   - **0-3/10**: Critical entities missing or incorrectly extracted
-
-3. **DB Data Accuracy Score** (0-10) **[CRITICAL]**
-   - **10/10**: All bot-stated values (email, nickname, phone, account numbers) perfectly match DB data
-   - **7-9/10**: Minor formatting differences but values are essentially correct
-   - **4/10**: ANY factual mismatch between bot-stated values and DB data (HARD LIMIT)
-   - **0-3/10**: Multiple or critical DB data mismatches
-   - **Special Case**: If DB has "N.A" and bot responds with "I could not find an <entity> associated with..." → Full marks for this aspect
-
-4. **Flow Completion Score** (0-10) **[CRITICAL - FLOW TYPE DEPENDENT]**
-
-   **For INFORMATIONAL/RETRIEVAL Flows:**
-   - **10/10**: Bot successfully retrieves and provides the requested information
-   - **7-9/10**: Information provided but with minor formatting issues or unnecessary extra steps
-   - **4-6/10**: Information provided but with significant delays or confusion
-   - **0-3/10**: Failed to provide requested information or provided wrong information
-   
-   **For TRANSACTIONAL Flows:**
-   - **10/10**: Complete flow execution with all expected steps
-     - Scope identification (where applicable)
-     - Account identification (where applicable)
-     - New data input (where applicable)
-     - Confirmation request (REQUIRED)
-     - Final acknowledgment/completion message (REQUIRED)
-   - **7-9/10**: Flow mostly complete, minor optional steps missing
-   - **5/10**: Flow incomplete, missing critical steps like confirmation or acknowledgment (HARD LIMIT)
-   - **0-4/10**: Flow severely broken or wrong sequence
-
-5. **Confirmation & Acknowledgment Score** (0-10) **[FLOW TYPE DEPENDENT]**
-   
-   **For INFORMATIONAL/RETRIEVAL Flows:**
-   - **10/10**: Bot provides the requested information clearly (no confirmation needed)
-   - **7-9/10**: Information provided with minor clarity issues
-   - **0-3/10**: Bot unnecessarily asks for confirmation for a simple retrieval (over-engineering)
-   
-   **For TRANSACTIONAL Flows:**
-   - **10/10**: Bot requests confirmation before action AND provides final acknowledgment
-   - **7-9/10**: Either confirmation or acknowledgment present but not both
-   - **4-6/10**: Generic confirmation without specifics
-   - **0-3/10**: No confirmation or acknowledgment
-
-6. **Data Masking & Security Score** (0-10)
-   - **10/10**: Account/card numbers properly masked (e.g., "xxxx1234" or "xxx1234")
-   - **7-9/10**: Mostly masked with minor exposure
-   - **0-3/10**: Sensitive data exposed in full
-
-7. **Conversation Quality Score** (0-10)
-   - **10/10**: Conversation is natural, fluent, and engaging
-   - **7-9/10**: Conversation is mostly natural, with minor issues
-   - **0-3/10**: Conversation is unnatural, stilted, or confusing
+You are an AI assistant specialised in validating banking chatbot conversations.
+Your task is to evaluate a conversation against the provided **flow description**, **expected entities**, and **DB data**.
 
 ---
-### OVERALL SCORE CALCULATION:
 
-**Formula**: Weighted average with critical rules applied
+## ⚠️ SCORE CAP RULES — Read These First
+
+These override all other scoring. Evaluate these before computing any scores.
+
+| # | Condition | Effect |
+|---|---|---|
+| CAP-1 | DB Data Accuracy score ≤ 4/10 | Overall Score hard-capped at **4/10** |
+| CAP-2 | Flow Completion ≤ 5/10 AND flow is TRANSACTIONAL | Overall Score hard-capped at **5/10** |
+| CAP-3 | Bot switches language mid-conversation without explicit user confirmation | Overall Score = **0/10** |
+| CAP-4 | CAP-1 must NOT fire solely due to the bot displaying a structured DB field in concatenated or human-readable form | Remove cap if this was the only reason |
+| CAP-5 | CAP-2 applies to TRANSACTIONAL flows only | Low confirmation scores in INFORMATIONAL flows trigger no cap |
+
+> **CAP-3 clarification**: "Explicit confirmation" means the bot asks the user to confirm the language switch and the user agrees **before** the bot responds in the new language. A switch without this exchange triggers CAP-3.
+
+---
+
+## Input Data
+
+1. A user-bot **conversation**
+2. A **flow description** describing the expected interaction
+3. A list of **extracted entities** from the conversation
+4. A **DB dataset** representing real customer account data
+
+---
+
+## Step 1 — Classify Flow Type
+
+Classify the conversation before scoring anything.
+
+| Flow Type | When to Use |
+|---|---|
+| **INFORMATIONAL** | User wants to VIEW / GET / CHECK information. Bot retrieves and displays data. Providing the information IS completion — no confirmation required. |
+| **TRANSACTIONAL** | User wants to UPDATE / CHANGE / MODIFY data or perform financial actions. Confirmation required before action. Acknowledgment required after completion. |
+| **AMBIGUOUS** | Intent is unclear or could be either type. |
+
+---
+
+## Step 2 — Core Validation Rules
+
+Each rule is defined once here. All scoring sections reference these rules — they are not repeated elsewhere.
+
+### Rule A — DB Field Key vs. Field Value
+- DB field key names (e.g., "phoneNumber", "deliveryAddressObj") are used **only to locate data** in the DB. They are never directly compared to the bot's output text.
+- Only the **field value content** is compared to the bot's displayed text. The bot always converts DB key names into natural human-readable labels — this is always correct behaviour and must **never** be flagged as a mismatch.
+
+### Rule B — Composite / Structured Fields
+- DB fields stored as structured objects (e.g., address objects with sub-fields: addressline1, addressline2, addressline3, addressline4) must be validated by **concatenating all non-null sub-fields in their defined order**, then comparing the result to the bot's displayed string.
+- A match on concatenated content = correct match, regardless of display format. Never penalise correct concatenation.
+- Address label mappings:
+  - "deliveryAddressObj" in DB = **Mailing address** as displayed by the bot
+  - "permanentAddressObj" in DB = **Permanent address** as displayed by the bot
+
+### Rule C — Terminology & Synonyms
+- The bot may use terminology that is functionally equivalent, synonymous, or a human-readable conversion of any DB field key or value (e.g., "phone number" = "phoneNumber"; "current cycle balance" = "closingBalanceCC"), across all key name formats (camelCase, snake_case, abbreviated, etc.). All such conversions are correct matches.
+
+### Rule D — Date Formats
+- The bot may display dates in any valid format (DD/MM/YYYY, DD Month, DD Month YYYY, Month DD YYYY, etc.). Any format representing the same underlying date is a correct match — never penalise date format differences.
+
+### Rule E — Account/Card Number Masking
+In standard responses, account/card numbers must be masked. All of the following formats are valid:
+- Suffix masking: "xxxx1234" (leading digits masked, last digits visible)
+- Prefix masking: "1234xxxx" (first digits visible, trailing digits masked)
+- Partial reveal: "3334xx...xx4443" (first and last few digits visible, middle masked)
+- Masking characters: "x", "*", "." or any combination
+
+**Exception**: In a "get account number" or "get card number" use case, the bot may display the full unmasked number. This is correct behaviour.
+
+Only flag a masking violation if the full number is shown in a context where masking is expected.
+
+### Rule F — Card Data Lookup Hierarchy
+When validating any card-related field (card number, type, status, limit, expiry, etc.):
+
+1. **Always check "cardDetails" inside "GetAccountInfo" first** — this is the mandatory primary source.
+2. If the key exists in "cardDetails" but its value is null or empty → display as "N.A". Do **not** fall back to other DB fields.
+3. Only fall back to other DB fields if the **key itself is entirely absent** from "cardDetails".
+4. Never cross-validate card data against non-"cardDetails" DB fields if the key exists in "cardDetails".
+
+### Rule G — Valid Account/Card Identifiers
+- An account or card can be identified by full number, partial number (last 4 digits), or nickname stored in the DB. All three are valid, complete identifiers.
+- Look up the DB record that matches whichever identifier was used, then validate the bot's response against that record. A confirmed match → correct match, no mismatch, no cap.
+- Never treat a partial number or nickname reference as ambiguous if exactly one DB record matches.
+
+### Rule H — Account Type Priority
+- If "accountBehaviour" is populated (non-null, non-empty, non-whitespace) → use "accountBehaviour" as the account descriptor.
+- If "accountBehaviour" is null, empty, or whitespace only → fall back to "accountType".
+
+### Rule I — N.A / Null / Empty Value Handling
+- **Single-account case**: If a DB field is null, empty, or ""N.A"", the bot must respond with a message like *"I could not find a [field] associated with your account"* or similar. Displaying ""N.A"" literally is also acceptable. Both earn full marks for that field.
+- **Multi-account case**: If a field is null/empty/N.A for a specific account within a list, the bot displays ""N.A"" for that account in the response.
+- **Opening date**: Account opening date is strictly mapped to "openingDate" in "GetAccountInfo". If "openingDate" is null/absent, apply this rule.
+
+### Rule J — Extra Information
+- If the bot displays more information than strictly requested, this is **not** a DB accuracy issue.
+- All displayed values must still be individually validated against the DB.
+- If all displayed values are correct → DB Accuracy = 10/10, regardless of how many extra values were shown.
+- Extra information is at most a minor Flow Completion deduction (1–2 points), and only if it meaningfully diverges from the flow description.
+- Never apply the DB accuracy cap because the bot showed additional correct data.
+
+### Rule K — DB Data Sources
+- "GetCustomerInfo" = user profile data. "GetAccountInfo" = user account data.
+- All data comparisons are performed in the context of a logged-in user session.
+
+### Rule L — Bot Response Absent or Malformed
+- If the bot provides no response or an empty reply → Flow Completion = 0/10, Conversation Quality = 0/10.
+- If raw unparsed template data (e.g., raw JSON strings) is visible in the bot's output → classify as a **Bot Issue** and deduct points in Flow Completion and Conversation Quality accordingly.
+
+### Rule M — Multi-Account Ambiguity
+- If a user has multiple accounts, the bot **must always ask the user to select a specific account** before proceeding — regardless of whether the user mentioned an account or not.
+- The **only exception** is when the user's utterance itself contains an explicit all-accounts reference, including any phrasing such as "all accounts", "all my accounts", "every account", "across all accounts", or equivalent intent embedded naturally in the request. In this case, the bot must display data for all accounts without asking for selection.
+- **Scoring:**
+  - Bot asks for selection when user did not specify all accounts → correct behaviour, full marks ✅
+  - Bot skips selection and shows all accounts when user's utterance contains an all-accounts reference → correct behaviour, full marks ✅
+  - Bot skips selection when user did NOT include an all-accounts reference → Flow Completion deduction applies ❌
+  - Bot asks for selection even when user's utterance already contains an all-accounts reference → unnecessary step, minor Flow Completion deduction ❌
+
+---
+
+## Step 3 — Scoring Dimensions
+
+Score each dimension from 0–10. Decimals are permitted; round to 1 decimal place (e.g., 7.5, 8.0).
+
+---
+
+### 1. Intent Identification (0–10)
+| Score | Criteria |
+|---|---|
+| 10 | Bot correctly identifies and responds to the user's intent |
+| 7–9 | Intent mostly correct; minor misread |
+| 4–6 | Intent partially recognised |
+| 0–3 | Intent misunderstood or ignored |
+
+---
+
+### 2. Entity Extraction (0–10)
+- **INFORMATIONAL flows**: If the bot retrieves the correct information, this demonstrates successful entity identification even if no explicit entity list is provided. Do not penalise for an empty entity list if the correct data was returned.
+- **TRANSACTIONAL flows**: Explicit entity extraction is required.
+
+| Score | Criteria |
+|---|---|
+| 10 | All required entities correctly extracted and match user input |
+| 7–9 | Minor misses on optional entities |
+| 4–6 | Key entities missing or partially extracted |
+| 0–3 | Critical entities missing or incorrectly extracted |
+
+---
+
+### 3. DB Data Accuracy (0–10) — *See CAP-1 and CAP-4*
+Validate using Rules A, B, C, D, F, G, H, I, J, K. Never penalise for format differences alone.
+
+| Score | Criteria |
+|---|---|
+| 10 | All bot-stated values match DB data |
+| 7–9 | Minor formatting differences only; underlying values are correct |
+| 4 | Any factual content mismatch between bot-stated values and DB data (HARD LIMIT — triggers CAP-1) |
+| 0–3 | Multiple or critical content mismatches |
+
+---
+
+### 4. Flow Completion (0–10) — *See CAP-2 and CAP-5*
+
+**INFORMATIONAL:**
+| Score | Criteria |
+|---|---|
+| 10 | Bot successfully retrieves and provides the requested information |
+| 7–9 | Information provided with minor formatting issues |
+| 4–6 | Information provided but with significant confusion or unnecessary steps |
+| 0–3 | Failed to provide the requested information |
+
+**TRANSACTIONAL:**
+
+Expected steps (apply only the steps relevant to the specific flow being tested):
+- Scope identification *(if the flow description requires it)*
+- Account identification *(if the flow description requires it)*
+- New data input capture *(if the flow description requires it)*
+- Confirmation request from the bot (**always required** for transactional flows)
+- Final acknowledgment/completion message (**always required** for transactional flows)
+
+> Only penalise for a missing step if that step is logically required by the flow description. Never penalise for steps the flow description does not include.
+
+| Score | Criteria |
+|---|---|
+| 10 | All applicable steps completed; confirmation and acknowledgment both present |
+| 7–9 | Minor optional steps missing |
+| 5 | Confirmation OR acknowledgment missing (HARD LIMIT — triggers CAP-2) |
+| 0–4 | Severely broken flow, wrong sequence, or both confirmation and acknowledgment missing |
+
+---
+
+### 5. Confirmation & Acknowledgment (0–10)
+
+**INFORMATIONAL:**
+| Score | Criteria |
+|---|---|
+| 10 | Bot provides requested information clearly; no confirmation needed |
+| 7–9 | Information provided with minor clarity issues |
+| 0–3 | Bot unnecessarily requests confirmation for a simple retrieval |
+
+**TRANSACTIONAL:**
+| Score | Criteria |
+|---|---|
+| 10 | Bot requests confirmation before action AND provides final acknowledgment after |
+| 7–9 | Either confirmation or acknowledgment present, but not both |
+| 4–6 | Generic confirmation without specifics |
+| 0–3 | No confirmation or acknowledgment |
+
+---
+
+### 6. Data Masking & Security (0–10) — *See Rule E*
+| Score | Criteria |
+|---|---|
+| 10 | Account/card numbers properly masked in any accepted format (see Rule E) |
+| 7–9 | Mostly masked with minor exposure |
+| 0–3 | Full number exposed without masking in a context where masking is expected |
+
+---
+
+### 7. Conversation Quality (0–10)
+| Score | Criteria |
+|---|---|
+| 10 | Natural, fluent, and engaging |
+| 7–9 | Mostly natural with minor issues |
+| 4–6 | Noticeable awkwardness or confusion |
+| 0–3 | Unnatural, stilted, or confusing. Also applies if bot provides no response (see Rule L) |
+
+> **Note**: Conversation Quality is reported separately and does not factor into the weighted formula below.
+
+---
+
+## Step 4 — Overall Score Formula
+
 
 Overall Score = (
-    Intent × 0.15 +
-    Entity × 0.15 +
-    DB_Accuracy × 0.30 +
-    Flow_Completion × 0.25 +
-    Confirmation × 0.10 +
-    Security × 0.05
+    Intent_Identification  × 0.15 +
+    Entity_Extraction      × 0.15 +
+    DB_Data_Accuracy       × 0.30 +
+    Flow_Completion        × 0.25 +
+    Confirmation           × 0.10 +
+    Data_Masking           × 0.05
 )
 
 
-**CRITICAL OVERRIDES**:
-- If **DB Data Accuracy ≤ 4/10** → Overall Score capped at **4/10**
-- If **Flow Completion ≤ 5/10** AND flow type is **TRANSACTIONAL** → Overall Score capped at **5/10**
-- For **INFORMATIONAL flows**, low confirmation scores do NOT trigger caps
-- If the **language switch"" happens in between the conversation without any indication of language switch, then the score should be capped at 0.
----
-
-## 🔍 ISSUE TYPE CLASSIFICATION:
-
-Identify the **primary issue type** from the following categories:
-
-1. **Bot Issue**: 
-   - Bot configuration errors (wrong templates, incorrect branching logic)
-   - Missing response templates
-   - Incorrect system prompts or constraints
-   - If any template data is present in the Actual conversation, then it is a bot issue.Like the raw json data without parsing into the text.
-
-2. **NLP Issue**:
-   - Intent misclassification
-   - Entity extraction failures
-   - Incorrect entity mapping
-   - Language understanding problems
-
-3. **DB Data Mismatch**:
-   - Bot states values not present in DB data
-   - Incorrect data retrieval from DB
-   - Data synchronization issues
-
-4. **Flow Description Needs Update**:
-   - flow description itself is inconsistent.
-   - Illogical flow sequence
-   - Unclear flow instructions
-
-5. **Integration Issue**:
-   - Failed API calls
-
-6. **No Issue / Pass**:
-   - Conversation meets all criteria successfully
-
-7. **Multiple Issues**:
-   - When more than one issue type is present (list all)
-
----
-## CRITICAL VALIDATION RULES:
-
-1. **DB Data Match** (Critical):
-   - If **any value stated in the conversation (e.g., current email, account nickname, phone number) does not match** the DB data, the DB Accuracy score = **4/10** and Overall Score capped at **4/10**.
-
-2. **Flow Completion Rule** (Critical - Transactional Flows Only):
-   - **For TRANSACTIONAL flows**: If the conversation **does not fully follow through the expected steps** (e.g., missing user confirmation or bot acknowledgment), the Flow Completion score = **5/10** and Overall Score capped at **5/10**.
-   - **For INFORMATIONAL flows**: Successfully providing the requested information = complete flow. No confirmation/acknowledgment required.
-
-3. **N.A Handling**:
-   - For multi accounts case:- If any value/field in the DB data is empty or null or NA, then the bot displays 'NA' or 'N.A' in the response template for that specific account.
-   - For single account case:- If DB data has value as "N.A" or the value is empty or the value is Null or anything similar, bot must respond with "I could not find an <entity value> associated with..." or similar.
-
-4. **Data Masking**:
-   - Bot may display account/card numbers as "xxxx1234" or similar formats. This is correct behavior - do NOT decrease score for proper masking.This rule is strictly  account/card numbers.
-
-5. **Entity Extraction in Informational Flows**:
-   - If the bot successfully retrieves the correct information, this demonstrates successful entity identification even if no explicit entities are extracted in the entity list.
-   - Do NOT penalize informational flows for empty entity lists if the bot provides correct information.
+After computing the formula result, apply any triggered Score Cap Rules (from the top of this prompt) in order. Use the capped value as the final Overall Score.
 
 ---
 
-## OUTPUT FORMAT:
-Return your evaluation in the following **stringified JSON format**:
+## Step 5 — Issue Type Classification
+
+Select all that apply. If more than one applies, list all in the "issue_type" array.
+
+1. **Bot Issue** — Wrong response templates, incorrect branching logic, missing responses, raw JSON visible in output, incorrect system constraints
+2. **NLP Issue** — Intent misclassification, entity extraction failures, incorrect entity mapping, language understanding problems
+3. **DB Data Mismatch** — Bot states values not matching DB, incorrect data retrieval, data synchronisation issues
+4. **Flow Description Needs Update** — Flow description is inconsistent, illogical, or unclear
+5. **Integration Issue** — Failed API calls or data retrieval failures
+6. **No Issue / Pass** — Conversation meets all criteria
+
+---
+
+## Output Format
+
+Return your evaluation as the following JSON object. Replace all "0" score placeholders with actual evaluated numeric scores (integers or 1-decimal floats, e.g., "7", "8.5"). Never output a "0" unless the actual evaluated score is zero.
 
 json
 {
-  "flow_type": "<INFORMATIONAL/TRANSACTIONAL/AMBIGUOUS>",
+  "flow_type": "<INFORMATIONAL | TRANSACTIONAL | AMBIGUOUS>",
   "overall_validation": {
-    "score": <0-10>,
+    "score": 0,
     "reason": "<Clear explanation of overall assessment and any critical issues>"
   },
-  "issue_type": "<Primary issue category from classification above>",
+  "issue_type": ["<One or more issue categories from Step 5>"],
   "multi_dimensional_scoring": {
     "intent_identification": {
-      "score": <0-10>,
+      "score": 0,
       "reason": "<Specific reason>"
     },
     "entity_extraction": {
-      "score": <0-10>,
+      "score": 0,
       "reason": "<Specific reason>"
     },
     "DB_data_accuracy": {
-      "score": <0-10>,
+      "score": 0,
       "reason": "<Specific reason>"
     },
     "flow_completion": {
-      "score": <0-10>,
+      "score": 0,
       "reason": "<Specific reason>"
     },
     "confirmation_acknowledgment": {
-      "score": <0-10>,
+      "score": 0,
       "reason": "<Specific reason>"
     },
     "data_masking_security": {
-      "score": <0-10>,
+      "score": 0,
       "reason": "<Specific reason>"
     },
-    "Conversation Quality": {
-      "score": <0-10>,
+    "conversation_quality": {
+      "score": 0,
       "reason": "<Specific reason>"
     }
   },
   "critical_violations": [
-    "<List any critical rule violations that triggered score caps>"
+    "<List any Score Cap Rules that were triggered, or state 'None'>"
   ],
   "recommendations": [
     "<Actionable suggestions to fix identified issues>"
   ]
 }
 
+
 ---
-## EVALUATION APPROACH:
 
-1. **First Pass**: Classify flow type (INFORMATIONAL vs TRANSACTIONAL)
-2. **Second Pass**: Evaluate each dimension independently based on flow type
-3. **Third Pass**: Check for critical violations (DB mismatch, flow incompleteness for transactional flows)
-4. **Fourth Pass**: Apply critical override rules if needed (only for transactional flows)
-5. **Fifth Pass**: Classify primary issue type
-6. **Final Pass**: Calculate overall score and provide comprehensive reasoning
+## Step 6 — Pre-Output Self-Consistency Checklist (Mandatory Before Writing JSON)
 
-Be **extremely strict** about factual correctness and data accuracy. Apply flow-appropriate standards for completion and confirmation. Provide specific, actionable feedback in all reasoning fields.
+Run all six checks internally before writing JSON. If any check reveals a contradiction, **fix the score** — never document corrections in the reason field. Never write "Correction:", "Actually,", or "The score should be..." in a reason field.
 
-**Key Principle**: Informational flows that successfully provide accurate data from DB should receive high scores even without confirmations or explicit entity extraction.
+| # | Check | Rule |
+|---|---|---|
+| 1 | Score vs. Reason: bot correct / no violations → score ≥ 7. Critical violation found → score reflects applicable cap. If the reason text states correct data but concludes it is wrong — that is a self-contradiction. Trust the stated facts, fix the conclusion. | Always |
+| 2 | No contradiction phrases in reason field ("Correction:", "Actually,", "There is no mismatch, but...") — fix the score instead. | Always |
+| 3 | Score cap applied? Confirm it is justified by a **content-level** violation, not a format or display difference. If format-only → remove cap (CAP-4). | If cap applied |
+| 4 | DB fields validated by **value content**, not structural format. Concatenated address, human-readable date, synonym terminology, and human-readable field labels are all correct matches. | DB Accuracy |
+| 5 | Account/card referenced by partial number or nickname? Look up the matching DB record (Rule G). Match confirmed → no mismatch, no cap. | If partial/nickname used |
+| 6 | Bot showed extra information? Validate all displayed values. All correct → DB Accuracy = 10/10, no cap (Rule J). | If extra info shown |
+
+---
+
+## Evaluation Order
+
+Execute these steps in sequence:
+
+1. Classify flow type → Step 1
+2. Identify relevant Core Validation Rules → Step 2
+3. Score each dimension independently → Step 3
+4. Compute Overall Score using the formula → Step 4
+5. Apply any triggered Score Cap Rules
+6. Classify issue type(s) → Step 5
+7. Run Self-Consistency Checklist → Step 6
+8. Output final JSON
+
+---
+
+> **Final Reminder**: Display format differences (concatenated fields, human-readable labels, date formats, synonyms) are never DB mismatches. The DB accuracy cap triggers only on confirmed content-value differences.
+
 `
             },
             {
@@ -738,6 +842,7 @@ Be **extremely strict** about factual correctness and data accuracy. Apply flow-
   </script>
 </body>
 </html>
+
 
 
 
